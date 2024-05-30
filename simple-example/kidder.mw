@@ -1,0 +1,87 @@
+with(orthopoly):
+with(Optimization):
+
+Digits := 15:
+
+# CLS-SVR parameters
+
+Deg := 5:
+Nres := Deg + 2:
+
+# Define the residual function
+Res := unapply(sqrt(1 - kappa*u(x))*(D@@2)(u)(x) + 2*x*D(u)(x), x):
+
+
+# Define possible mapping functions
+shifts := [
+    L -> -1 + 2*tanh(x^LAMBDA/L),
+    L -> (x^LAMBDA - L)/(x^LAMBDA + L),
+    L -> 1 - 2*exp(-x^LAMBDA/L)
+]:
+
+# Read configuration from file
+config := fopen("config.txt", READ):
+fscanf(config, "%s\n"):  # Read and discard a string (label or header)
+line := fscanf(config, "%a\n"):  # Read the actual configuration values
+
+# Assign configuration values
+theta := line[1]:
+ALPHA := line[2]:
+BETA := line[3]:
+LAMBDA := line[4]:
+mapping := line[5]:
+kappa := line[6]:
+fclose(config):
+
+# Exact values for comparison
+
+exacts[.1] := -1.139007206178306587479516936958950: # .1
+
+exacts[.3] := -1.162941458295918374618188164126486: # .3
+
+exacts[.5] := -1.191790649719421734122828603800159: # .5
+
+exacts[.7] := -1.228598473695926722945861196717283: # .7
+
+exacts[.9] := -1.281881322203362356513848181681850: # .9
+
+exact := exacts[kappa]:
+
+# Determine the shift function based on the mapping
+shiftfunc := shifts[mapping]:
+shift := shiftfunc(theta):
+
+# Define polynomial roots and solution function based on ALPHA and BETA
+if ALPHA = 0 and BETA = 0 then
+    # Legendre polynomials
+    zeros := fsolve(P(Nres, x)):
+    u := unapply(1/(1 + x) + x/(x^2 + 1) * sum(w[i]*P(i, shift), i = 0 .. Deg), x):
+elif evalf(ALPHA) = -0.5 and evalf(BETA) = -0.5 then
+    # Chebyshev polynomials
+    zeros := fsolve(T(Nres, x)):
+    u := unapply(1/(1 + x) + x/(x^2 + 1) * sum(w[i]*T(i, shift), i = 0 .. Deg), x):
+else
+    # Jacobi polynomials
+    zeros := fsolve(P(Nres, ALPHA, BETA, x)):
+    u := unapply(1/(1 + x) + x/(x^2 + 1) * sum(w[i]*P(i, ALPHA, BETA, shift), i = 0 .. Deg), x):
+end if:
+
+# Solve for points based on the shifts and zeros
+points := [seq(fsolve(shift - zeros[i]), i = 1 .. Nres)]:
+
+# Define constraints and cost function for optimization
+constraints := {seq(Res(points[i]) = e[i], i = 1 .. Nres)}:
+cost := sum(e[i]^2, i = 1 .. Nres):
+
+# Perform nonlinear programming to solve the optimization problem
+result := NLPSolve(cost, constraints):
+assign(result[2]):
+
+# Calculate the criterion and difference from exact value
+criterion := evalf(limit(diff(u(x), x), x = 0)):
+dif := abs(exact - criterion):
+
+# Write the result to a CSV file
+file_name := fopen("result.csv", WRITE):
+fprintf(file_name, "%.15f", dif):
+fclose(file_name):

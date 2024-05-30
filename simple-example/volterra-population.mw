@@ -1,0 +1,80 @@
+with(orthopoly):
+with(Optimization):
+
+Digits := 15:
+
+# CLS-SVR parameters
+
+Deg := 5:
+Nres := Deg + 2:
+
+# Define the residual function
+Res := unapply(kappa*(D@@2)(u)(x) + (-D(u)(x) + D(u)(x)^2 + u(x)*D(u)(x)), x):
+u0 := 0.1:
+
+# Define possible mapping functions
+shifts := [
+    L -> -1 + 2*tanh(x^LAMBDA/L),
+    L -> (x^LAMBDA - L)/(x^LAMBDA + L),
+    L -> 1 - 2*exp(-x^LAMBDA/L)
+]:
+
+# Read configuration from file
+config := fopen("config.txt", READ):
+fscanf(config, "%s\n"):  # Read and discard a string (label or header)
+line := fscanf(config, "%a\n"):  # Read the actual configuration values
+
+# Assign configuration values
+theta := line[1]:
+ALPHA := line[2]:
+BETA := line[3]:
+LAMBDA := line[4]:
+mapping := line[5]:
+kappa := line[6]:
+fclose(config):
+
+# Exact value for comparison
+
+exact := 1 + kappa*log(kappa/(1 + kappa - u0)):
+
+
+# Determine the shift function based on the mapping
+shiftfunc := shifts[mapping]:
+shift := shiftfunc(theta):
+
+# Define polynomial roots and solution function based on ALPHA and BETA
+if ALPHA = 0 and BETA = 0 then
+    # Legendre polynomials
+    zeros := fsolve(P(Nres, x)):
+    u := unapply(1/(1 + x) + x/(x^2 + 1) * sum(w[i]*P(i, shift), i = 0 .. Deg), x):
+elif evalf(ALPHA) = -0.5 and evalf(BETA) = -0.5 then
+    # Chebyshev polynomials
+    zeros := fsolve(T(Nres, x)):
+    u := unapply(1/(1 + x) + x/(x^2 + 1) * sum(w[i]*T(i, shift), i = 0 .. Deg), x):
+else
+    # Jacobi polynomials
+    zeros := fsolve(P(Nres, ALPHA, BETA, x)):
+    u := unapply(1/(1 + x) + x/(x^2 + 1) * sum(w[i]*P(i, ALPHA, BETA, shift), i = 0 .. Deg), x):
+end if:
+
+# Solve for points based on the shifts and zeros
+points := [seq(fsolve(shift - zeros[i]), i = 1 .. Nres)]:
+
+# Define constraints and cost function for optimization
+constraints := {seq(Res(points[i]) = e[i], i = 1 .. Nres)}:
+cost := sum(e[i]^2, i = 1 .. Nres):
+
+# Perform nonlinear programming to solve the optimization problem
+result := NLPSolve(cost, constraints):
+assign(result[2]):
+
+# Calculate the criterion and difference from exact value
+result := Maximize(diff(u(x), x), x = 0 .. 5):
+criterion := result[1]:
+tcritical := rhs(result[2][1]):
+dif := abs(exact - criterion):
+
+# Write the result to a CSV file
+file_name := fopen("result.csv", WRITE):
+fprintf(file_name, "%.15f", dif):
+fclose(file_name):
