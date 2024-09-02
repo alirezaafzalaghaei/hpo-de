@@ -39,3 +39,20 @@ Navigate to the simple-example folder and follow the instructions in the README 
 ## Contact
 
 For any questions or issues, please open an issue in this repository or contact the authors directly.
+
+## Citation
+If this code contributes to your work, please acknowledge it by citing our paper:
+```
+@article{aghaei2024hyperparameter,
+author = {Afzal Aghaei, Alireza and Parand, Kourosh},
+title = {Hyperparameter optimization of orthogonal functions in the numerical solution of differential equations},
+journal = {Mathematical Methods in the Applied Sciences},
+volume = {n/a},
+number = {n/a},
+pages = {1-24},
+year = {2024},
+doi = {https://doi.org/10.1002/mma.10346},
+url = {https://onlinelibrary.wiley.com/doi/abs/10.1002/mma.10346},
+eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1002/mma.10346},
+}
+```
